@@ -9,10 +9,10 @@
  */
 
 class Database {
-    private $host = "localhost";
-    private $user = "root";
-    private $pass = "";
-    private $dbname = "xii_rpl_1_alisa_paket4";
+    private $host = "sql103.infinityfree.com";
+    private $user = "if0_42759950";
+    private $pass = "N4VhNZeZ2y";
+    private $dbname = "if0_42759950_xii_rpl_1_alisa_paket4";
     private $charset = "utf8mb4";
     private static $instance = null;
     private $dbh;
