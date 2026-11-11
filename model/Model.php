@@ -1,6 +1,6 @@
 <?php
 /**
- * Base Model Class
+ * Base Model Class (PDO)
  */
 require_once __DIR__ . '/../config/Database.php';
 

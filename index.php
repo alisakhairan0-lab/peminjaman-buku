@@ -1,3 +1,4 @@
+
 <?php
 /**
  * Aplikasi Sistem Peminjaman Buku Perpustakaan Digital SMK (UKK RPL Paket 4)
@@ -15,13 +16,15 @@ date_default_timezone_set('Asia/Jakarta');
 // Autoload Core & Models
 require_once __DIR__ . '/config/Database.php';
 require_once __DIR__ . '/model/Model.php';
+require_once __DIR__ . '/model/User.php';
 require_once __DIR__ . '/model/Buku.php';
-require_once __DIR__ . '/model/Pengguna.php';
-require_once __DIR__ . '/model/Admin.php';
 require_once __DIR__ . '/model/Kategori.php';
 require_once __DIR__ . '/model/Penerbit.php';
 require_once __DIR__ . '/model/Transaksi.php';
 require_once __DIR__ . '/model/DetailTransaksi.php';
+
+// Alumni.php tidak dipanggil karena file tersebut
+// belum ditemukan di dalam folder model.
 
 // Autoload Base Controller
 require_once __DIR__ . '/controller/Controller.php';
@@ -52,7 +55,7 @@ if (!array_key_exists($c, $controllers)) {
 }
 
 $controllerClass = $controllers[$c];
-$controllerFile  = __DIR__ . '/controller/' . $controllerClass . '.php';
+$controllerFile = __DIR__ . '/controller/' . $controllerClass . '.php';
 
 if (file_exists($controllerFile)) {
     require_once $controllerFile;
@@ -64,7 +67,6 @@ if (file_exists($controllerFile)) {
             $controllerInstance->$a();
             exit;
         } else {
-            // Fallback ke index jika method tidak ada
             if (method_exists($controllerInstance, 'index')) {
                 $controllerInstance->index();
                 exit;

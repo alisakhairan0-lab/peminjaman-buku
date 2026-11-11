@@ -23,17 +23,17 @@ header("Expires: 0");
                 extend: {
                     colors: {
                         pastel: {
-                            bg: '#F8F9FA',
-                            sage: '#8FA89B',
-                            sageLight: '#EAF0EC',
-                            peach: '#E8A598',
-                            peachLight: '#FDF0ED',
-                            lavender: '#A29BFE',
-                            lavenderLight: '#F1F0FF',
-                            sand: '#F7F5F0',
+                            bg: '#F8FAFC',
+                            sage: '#2563EB',        /* Biru Utama (Primary Blue) */
+                            sageLight: '#EFF6FF',   /* Biru Sangat Terang */
+                            peach: '#0284C7',       /* Biru Laut / Sky Blue */
+                            peachLight: '#E0F2FE',  /* Aksesori Biru Muda */
+                            lavender: '#4F46E5',    /* Indigo / Biru Tua */
+                            lavenderLight: '#E0E7FF',/* Indigo Terang */
+                            sand: '#F0F9FF',        /* Latar Biru Halus */
                             card: '#FFFFFF',
-                            text: '#2D3748',
-                            muted: '#718096',
+                            text: '#1E293B',
+                            muted: '#64748B',
                             border: '#E2E8F0'
                         }
                     },
@@ -51,8 +51,39 @@ header("Expires: 0");
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #F8F9FA; color: #2D3748; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #F8FAFC; color: #1E293B; }
         .font-serif { font-family: 'Playfair Display', serif; }
+        
+        /* Penimpaan CSS Utama untuk Warna Hex Manual */
+        .bg-\[\#8FA89B\], .bg-\[\#557565\], .bg-\[\#6B8E7B\] { background-color: #2563EB !important; }
+        .hover\:bg-\[\#789687\]:hover, .hover\:bg-\[\#435e51\]:hover { background-color: #1D4ED8 !important; }
+        .text-\[\#557565\], .text-\[\#8FA89B\] { color: #2563EB !important; }
+        .border-\[\#8FA89B\] { border-color: #3B82F6 !important; }
+        .focus-within\:border-\[\#8FA89B\]:focus-within { border-color: #3B82F6 !important; }
+        .bg-\[\#EAF0EC\] { background-color: #EFF6FF !important; }
+
+        /* UNIVERSEL OVERRIDE: Menimpa SEMUA elemen berkelas emerald/hijau menjadi Biru */
+        [class*="bg-emerald-"], [class*="bg-[#d1fae5]"], [class*="bg-[#ecfdf5]"] {
+            background-color: #DBEAFE !important;
+        }
+        [class*="text-emerald-"], [class*="text-[#065f46]"] {
+            color: #1E40AF !important;
+        }
+        [class*="border-emerald-"] {
+            border-color: #93C5FD !important;
+        }
+
+        /* Tombol File Input */
+        input[type="file"]::file-selector-button,
+        input[type="file"]::-webkit-file-upload-button {
+            background-color: #2563EB !important;
+            color: #FFFFFF !important;
+            border: none !important;
+        }
+        input[type="file"]::file-selector-button:hover,
+        input[type="file"]::-webkit-file-upload-button:hover {
+            background-color: #1D4ED8 !important;
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#F8F9FA] text-[#2D3748] antialiased">
+<body class="min-h-screen flex flex-col bg-[#F8FAFC] text-[#1E293B] antialiased">

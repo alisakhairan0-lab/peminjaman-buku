@@ -1,171 +1,380 @@
+
 <?php
+
 require_once __DIR__ . '/Controller.php';
-require_once __DIR__ . '/../model/Pengguna.php';
-require_once __DIR__ . '/../model/Admin.php';
+require_once __DIR__ . '/../model/User.php';
 
 class AuthController extends Controller {
+
+    private $userModel;
+
+    public function __construct() {
+        $this->userModel = new User();
+    }
+
+    /**
+     * LOGIN ADMIN DAN SISWA
+     */
     public function login() {
+
+        // Jika sudah login, arahkan sesuai role.
         if ($this->isAuth()) {
-            $this->redirect($_SESSION['user_type'] === 'admin' ? 'index.php?c=admin&a=dashboard' : 'index.php?c=user&a=dashboard');
-        }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $username = trim($_POST['username'] ?? '');
-            $password = trim($_POST['password'] ?? '');
-
-            // 1. Cek kredensial Administrator / Petugas Perpustakaan
-            $adminModel = new Admin();
-            $admin = $adminModel->findByUsername($username);
-            if ($admin && $adminModel->verifyPassword($password, $admin['password'])) {
-                // SESSION ID ADMIN DISIMPAN DI SINI UNTUK PENCATATAN PETUGAS PEMINJAMAN
-                $_SESSION['user_id']   = $admin['id_admin']; 
-                $_SESSION['user_type'] = 'admin';
-                $_SESSION['nama']      = $admin['nama_admin'];
-                $_SESSION['username']  = $admin['username'];
-
-                $this->setFlash('success', "Selamat datang, {$admin['nama_admin']} (Petugas Perpustakaan)!");
+            if ($_SESSION['user_type'] === 'admin') {
                 $this->redirect('index.php?c=admin&a=dashboard');
             }
 
-            // 2. Cek kredensial Siswa / Anggota
-            $penggunaModel = new Pengguna();
-            $user = $penggunaModel->findByUsername($username);
-            // Fallback juga cek via NIS
-            if (!$user) {
-                $user = $penggunaModel->findByNis($username);
-            }
-
-            if ($user && $penggunaModel->verifyPassword($password, $user['password'])) {
-                $_SESSION['user_id']   = $user['id_pengguna'];
-                $_SESSION['user_type'] = 'user';
-                $_SESSION['nama']      = $user['nama_lengkap'];
-                $_SESSION['username']  = $user['username'];
-                $_SESSION['nis']       = $user['nis'];
-
-                $this->setFlash('success', "Selamat datang kembali, {$user['nama_lengkap']}!");
-                $this->redirect('index.php?c=user&a=dashboard');
-            }
-
-            $this->setFlash('danger', 'Username / NIS atau password yang Anda masukkan tidak sesuai.');
+            $this->redirect('index.php?c=user&a=dashboard');
         }
 
-        $this->view('auth/login', ['pageTitle' => 'Login Perpustakaan']);
-    }
-
-    public function loginAdmin() {
-        // Redirect ke form login tunggal terpadu
-        $this->redirect('index.php?c=auth&a=login');
-    }
-
-    public function register() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nis      = trim($_POST['nis'] ?? '');
-            $nama     = trim($_POST['nama_lengkap'] ?? '');
+
             $username = trim($_POST['username'] ?? '');
-            $password = trim($_POST['password'] ?? '');
+            $password = $_POST['password'] ?? '';
 
-            if (empty($nis) || empty($nama) || empty($username) || empty($password)) {
-                $this->setFlash('danger', 'Semua kolom pendaftaran wajib diisi!');
+            if ($username === '' || $password === '') {
+
+                $this->setFlash(
+                    'danger',
+                    'Username dan password wajib diisi.'
+                );
+
             } else {
-                $penggunaModel = new Pengguna();
-                if ($penggunaModel->findByUsername($username)) {
-                    $this->setFlash('danger', 'Username sudah digunakan, silakan pilih yang lain.');
-                } elseif ($penggunaModel->findByNis($nis)) {
-                    $this->setFlash('danger', 'NIS sudah terdaftar!');
-                } else {
-                    $success = $penggunaModel->register([
-                        'nis'          => $nis,
-                        'nama_lengkap' => $nama,
-                        'username'     => $username,
-                        'password'     => $password
-                    ]);
 
-                    if ($success) {
-                        $this->setFlash('success', 'Registrasi anggota berhasil! Silakan login.');
-                        $this->redirect('index.php?c=auth&a=login');
+                // Login menggunakan tabel user.
+                $user = $this->userModel->login(
+                    $username,
+                    $password
+                );
+
+                if ($user) {
+
+                    // Regenerasi session untuk keamanan.
+                    session_regenerate_id(true);
+
+                    // Menyimpan identitas pengguna ke session.
+                    $_SESSION['user_id'] = $user['id_user'];
+                    $_SESSION['user_type'] = $user['role'];
+                    $_SESSION['nama'] = $user['nama_lengkap'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['nis'] = $user['nis'] ?? null;
+
+                    // Arahkan berdasarkan role.
+                    if ($user['role'] === 'admin') {
+
+                        $this->setFlash(
+                            'success',
+                            "Selamat datang, {$user['nama_lengkap']} (Administrator)!"
+                        );
+
+                        $this->redirect(
+                            'index.php?c=admin&a=dashboard'
+                        );
+
+                    } elseif ($user['role'] === 'pengguna') {
+
+                        $this->setFlash(
+                            'success',
+                            "Selamat datang kembali, {$user['nama_lengkap']}!"
+                        );
+
+                        $this->redirect(
+                            'index.php?c=user&a=dashboard'
+                        );
+
                     } else {
-                        $this->setFlash('danger', 'Gagal mendaftar. Silakan coba lagi.');
+
+                        // Role tidak dikenal.
+                        $_SESSION = [];
+
+                        $this->setFlash(
+                            'danger',
+                            'Role akun tidak dikenali.'
+                        );
+
+                        $this->redirect(
+                            'index.php?c=auth&a=login'
+                        );
                     }
+
+                } else {
+
+                    $this->setFlash(
+                        'danger',
+                        'Username atau password salah, atau akun tidak aktif.'
+                    );
                 }
             }
         }
 
-        $this->view('auth/register', ['pageTitle' => 'Daftar Anggota Baru']);
+        $this->view(
+            'auth/login',
+            [
+                'pageTitle' => 'Login Perpustakaan'
+            ]
+        );
     }
 
-    public function profile() {
-        if (!$this->isAuth()) {
-            $this->redirect('index.php?c=auth&a=login');
-        }
 
-        $userType = $_SESSION['user_type'];
-        $userId   = $_SESSION['user_id'];
+    /**
+     * LOGIN ADMIN
+     * Menggunakan halaman login yang sama.
+     */
+    public function loginAdmin() {
+
+        $this->redirect(
+            'index.php?c=auth&a=login'
+        );
+    }
+
+
+    /**
+     * REGISTRASI SISWA
+     */
+    public function register() {
+
+        // Pengguna yang sudah login tidak perlu registrasi lagi.
+        if ($this->isAuth()) {
+
+            if ($_SESSION['user_type'] === 'admin') {
+                $this->redirect('index.php?c=admin&a=dashboard');
+            }
+
+            $this->redirect('index.php?c=user&a=dashboard');
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nama     = trim($_POST['nama'] ?? '');
-            $password = trim($_POST['password'] ?? '');
 
-            if ($userType === 'admin') {
-                $adminModel = new Admin();
-                $adminModel->updateProfile($userId, $nama, !empty($password) ? $password : null);
-                $_SESSION['nama'] = $nama;
-                $this->setFlash('success', 'Profil Administrator berhasil diperbarui!');
+            $nis = trim($_POST['nis'] ?? '');
+            $nama = trim($_POST['nama_lengkap'] ?? '');
+            $username = trim($_POST['username'] ?? '');
+            $password = $_POST['password'] ?? '';
+
+            if (
+                $nis === '' ||
+                $nama === '' ||
+                $username === '' ||
+                $password === ''
+            ) {
+
+                $this->setFlash(
+                    'danger',
+                    'Semua kolom pendaftaran wajib diisi!'
+                );
+
+            } elseif ($this->userModel->isUsernameExist($username)) {
+
+                $this->setFlash(
+                    'danger',
+                    'Username sudah digunakan. Silakan pilih username lain.'
+                );
+
+            } elseif ($this->userModel->isNisExist($nis)) {
+
+                $this->setFlash(
+                    'danger',
+                    'NIS sudah terdaftar.'
+                );
+
             } else {
-                $nis = trim($_POST['nis'] ?? '');
-                $penggunaModel = new Pengguna();
-                $penggunaModel->updateProfile($userId, $nama, $nis, !empty($password) ? $password : null);
-                $_SESSION['nama'] = $nama;
-                $_SESSION['nis']  = $nis;
-                $this->setFlash('success', 'Profil Siswa berhasil diperbarui!');
+
+                // Akun registrasi selalu memiliki role pengguna.
+                $success = $this->userModel->create([
+                    'nis' => $nis,
+                    'nama_lengkap' => $nama,
+                    'username' => $username,
+                    'password' => $password,
+                    'role' => 'pengguna',
+                    'status' => 'Aktif'
+                ]);
+
+                if ($success) {
+
+                    $this->setFlash(
+                        'success',
+                        'Registrasi berhasil! Silakan login menggunakan akun kamu.'
+                    );
+
+                    $this->redirect(
+                        'index.php?c=auth&a=login'
+                    );
+
+                } else {
+
+                    $this->setFlash(
+                        'danger',
+                        'Registrasi gagal. Periksa kembali data yang dimasukkan.'
+                    );
+                }
             }
-            $this->redirect('index.php?c=auth&a=profile');
         }
 
-        $userData = null;
-        if ($userType === 'admin') {
-            $adminModel = new Admin();
-            $userData   = $adminModel->getById('id_admin', $userId);
-        } else {
-            $penggunaModel = new Pengguna();
-            $userData      = $penggunaModel->getById('id_pengguna', $userId);
-        }
-
-        $this->view('auth/profile', [
-            'pageTitle' => 'Profil Saya',
-            'user'      => $userData,
-            'userType'  => $userType
-        ]);
+        $this->view(
+            'auth/register',
+            [
+                'pageTitle' => 'Daftar Anggota Baru'
+            ]
+        );
     }
 
+
+    /**
+     * PROFIL ADMIN DAN SISWA
+     */
+    public function profile() {
+
+        if (!$this->isAuth()) {
+
+            $this->setFlash(
+                'danger',
+                'Silakan login terlebih dahulu.'
+            );
+
+            $this->redirect(
+                'index.php?c=auth&a=login'
+            );
+        }
+
+        $userId = (int) $_SESSION['user_id'];
+        $userType = $_SESSION['user_type'];
+
+        // Ambil data user dari tabel user.
+        $userData = $this->userModel->getById(
+            'id_user',
+            $userId
+        );
+
+        if (!$userData) {
+
+            $this->setFlash(
+                'danger',
+                'Data akun tidak ditemukan.'
+            );
+
+            $this->redirect(
+                'index.php?c=auth&a=logout'
+            );
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+            $nama = trim($_POST['nama'] ?? '');
+            $nis = trim($_POST['nis'] ?? '');
+            $password = $_POST['password'] ?? '';
+
+            if ($nama === '') {
+
+                $this->setFlash(
+                    'danger',
+                    'Nama lengkap tidak boleh kosong.'
+                );
+
+            } else {
+
+                // Pertahankan username, role, dan status lama.
+                $updateData = [
+                    'nama_lengkap' => $nama,
+                    'username' => $userData['username'],
+                    'nis' => $nis,
+                    'role' => $userData['role'],
+                    'status' => $userData['status']
+                ];
+
+                // Password hanya diganti jika diisi.
+                if ($password !== '') {
+                    $updateData['password'] = $password;
+                }
+
+                $success = $this->userModel->update(
+                    $userId,
+                    $updateData
+                );
+
+                if ($success) {
+
+                    // Perbarui session setelah perubahan berhasil.
+                    $_SESSION['nama'] = $nama;
+                    $_SESSION['nis'] = $nis;
+
+                    $this->setFlash(
+                        'success',
+                        'Profil berhasil diperbarui!'
+                    );
+
+                    $this->redirect(
+                        'index.php?c=auth&a=profile'
+                    );
+
+                } else {
+
+                    $this->setFlash(
+                        'danger',
+                        'Gagal memperbarui profil. Periksa kembali data kamu.'
+                    );
+                }
+            }
+
+            // Ambil ulang data setelah proses update.
+            $userData = $this->userModel->getById(
+                'id_user',
+                $userId
+            );
+        }
+
+        $this->view(
+            'auth/profile',
+            [
+                'pageTitle' => 'Profil Saya',
+                'user' => $userData,
+                'userType' => $userType
+            ]
+        );
+    }
+
+
+    /**
+     * LOGOUT
+     */
     public function logout() {
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        // Kosongkan semua variabel session
-        $_SESSION = array();
+        // Kosongkan seluruh data session.
+        $_SESSION = [];
 
-        // Hapus cookie session jika ada
-        if (ini_get("session.use_cookies")) {
+        // Hapus cookie session.
+        if (ini_get('session.use_cookies')) {
+
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params["path"], $params["domain"],
-                $params["secure"], $params["httponly"]
+
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params['path'],
+                $params['domain'],
+                $params['secure'],
+                $params['httponly']
             );
         }
 
-        // Hancurkan session sepenuhnya
+        // Hancurkan session lama.
         session_destroy();
 
-        // Kirim header anti-cache agar browser dilarang menyimpan riwayat halaman
-        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-        header("Cache-Control: post-check=0, pre-check=0", false);
-        header("Pragma: no-cache");
-        header("Expires: 0");
+        // Buat session baru agar pesan logout bisa ditampilkan.
+        session_start();
 
-        $this->setFlash('info', 'Anda telah berhasil logout.');
-        $this->redirect('index.php?c=landing&a=index');
-        exit;
+        $this->setFlash(
+            'info',
+            'Kamu berhasil logout.'
+        );
+
+        $this->redirect(
+            'index.php?c=landing&a=index'
+        );
     }
 }
+
 ?>

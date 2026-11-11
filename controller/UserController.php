@@ -1,119 +1,329 @@
+
 <?php
+
 require_once __DIR__ . '/Controller.php';
 require_once __DIR__ . '/../model/Transaksi.php';
 require_once __DIR__ . '/../model/Buku.php';
-require_once __DIR__ . '/../model/Pengguna.php';
+require_once __DIR__ . '/../model/User.php';
+require_once __DIR__ . '/../config/Database.php';
 
 class UserController extends Controller {
-    private function resolveUserId() {
-        return $_SESSION['user_id'] 
-            ?? $_SESSION['id_pengguna'] 
-            ?? $_SESSION['id'] 
-            ?? $_SESSION['pengguna_id'] 
-             ?? ($_SESSION['user']['id_pengguna'] ?? null) 
-            ?? null;
+
+    private $userModel;
+
+    public function __construct() {
+        $this->userModel = new User();
     }
 
+    /**
+     * MENGAMBIL ID USER YANG SEDANG LOGIN
+     * Sekarang menggunakan id_user dari session.
+     */
+    private function resolveUserId() {
+
+        return isset($_SESSION['user_id'])
+            ? (int) $_SESSION['user_id']
+            : null;
+    }
+
+
+    /**
+     * DASHBOARD SISWA
+     */
     public function dashboard() {
+
         $this->requireUser();
+
         $userId = $this->resolveUserId();
-        
+
+        if (!$userId) {
+            $this->redirect('index.php?c=auth&a=login');
+        }
+
         $transaksiModel = new Transaksi();
         $bukuModel = new Buku();
 
+        // Mengambil transaksi milik siswa yang login.
         $myTransactions = $transaksiModel->getByUser($userId);
-        $pending = array_filter($myTransactions, fn($t) => $t['status'] === 'menunggu');
-        $borrowed = array_filter($myTransactions, fn($t) => $t['status'] === 'dipinjam' || $t['status'] === 'menunggu_kembali' || empty($t['status']));
-        $returned = array_filter($myTransactions, fn($t) => $t['status'] === 'dikembalikan');
 
-        $activeLoans = array_merge($pending, $borrowed);
+        // Transaksi yang menunggu persetujuan admin.
+        $pending = array_filter(
+            $myTransactions,
+            function ($t) {
+                return ($t['status'] ?? '') === 'menunggu';
+            }
+        );
 
-        $totalDenda = array_reduce($myTransactions, function($acc, $t) {
-            return $acc + (int)($t['total_denda'] ?? 0);
-        }, 0);
+        // Transaksi yang masih dalam proses peminjaman.
+        $borrowed = array_filter(
+            $myTransactions,
+            function ($t) {
+                return in_array(
+                    $t['status'] ?? '',
+                    ['dipinjam', 'menunggu_kembali'],
+                    true
+                );
+            }
+        );
 
-        $recommendedBooks = array_slice($bukuModel->getAllWithDetails(), 0, 4);
+        // Transaksi yang sudah selesai.
+        $returned = array_filter(
+            $myTransactions,
+            function ($t) {
+                return ($t['status'] ?? '') === 'dikembalikan';
+            }
+        );
+
+        // Gabungan transaksi aktif dan menunggu.
+        $activeLoans = array_merge(
+            $pending,
+            $borrowed
+        );
+
+        // Menghitung total denda.
+        $totalDenda = array_reduce(
+            $myTransactions,
+            function ($acc, $t) {
+                return $acc + (float) ($t['total_denda'] ?? 0);
+            },
+            0
+        );
+
+        // Mengambil empat rekomendasi buku.
+        $recommendedBooks = array_slice(
+            $bukuModel->getAllWithDetails(),
+            0,
+            4
+        );
 
         $data = [
-            'pageTitle' => 'Dashboard Siswa - ' . ($_SESSION['nama'] ?? $_SESSION['user']['nama_lengkap'] ?? 'Siswa'),
+            'pageTitle' => 'Dashboard Siswa - ' .
+                ($_SESSION['nama'] ?? 'Siswa'),
+
             'totalPending' => count($pending),
+
             'totalActive' => count($borrowed),
+
             'totalReturned' => count($returned),
+
             'activeLoans' => $activeLoans,
+
             'myTransactions' => $myTransactions,
+
             'totalDenda' => $totalDenda,
+
             'recommendedBooks' => $recommendedBooks
         ];
 
-        $this->view('user/dashboard', $data);
+        $this->view(
+            'user/dashboard',
+            $data
+        );
     }
 
+
+    /**
+     * RIWAYAT PEMINJAMAN SISWA
+     */
     public function riwayat() {
+
         $this->requireUser();
+
         $userId = $this->resolveUserId();
-        
+
+        if (!$userId) {
+            $this->redirect('index.php?c=auth&a=login');
+        }
+
         $transaksiModel = new Transaksi();
+
+        // Mengambil transaksi berdasarkan id_user.
         $myTransactions = $transaksiModel->getByUser($userId);
 
         $data = [
-            'pageTitle' => 'Riwayat Peminjaman - ' . ($_SESSION['nama'] ?? $_SESSION['user']['nama_lengkap'] ?? 'Siswa'),
+            'pageTitle' => 'Riwayat Peminjaman - ' .
+                ($_SESSION['nama'] ?? 'Siswa'),
+
             'myTransactions' => $myTransactions
         ];
 
-        $this->view('user/riwayat', $data);
+        $this->view(
+            'user/riwayat',
+            $data
+        );
     }
 
-    public function ajukanKembali() {
-        $this->requireUser();
-        $userId = $this->resolveUserId();
-        
-        $id = (int)($_GET['id'] ?? 0);
-        $transaksiModel = new Transaksi();
-        
-        $success = $transaksiModel->ajukanPengembalianSiswa($id, $userId);
 
-        if ($success) {
-            $this->setFlash('success', 'Permintaan pengembalian buku berhasil diajukan ke petugas perpustakaan.');
-        } else {
-            $this->setFlash('danger', 'Gagal mengajukan pengembalian buku.');
+    /**
+     * MENGAJUKAN PENGEMBALIAN BUKU
+     */
+    public function ajukanKembali() {
+
+        $this->requireUser();
+
+        $userId = $this->resolveUserId();
+
+        if (!$userId) {
+            $this->redirect('index.php?c=auth&a=login');
         }
 
-        $this->redirect('index.php?c=user&a=riwayat');
+        $id = (int) ($_GET['id'] ?? 0);
+
+        if ($id <= 0) {
+
+            $this->setFlash(
+                'danger',
+                'ID transaksi tidak valid.'
+            );
+
+            $this->redirect(
+                'index.php?c=user&a=riwayat'
+            );
+        }
+
+        $transaksiModel = new Transaksi();
+
+        // Model akan memeriksa apakah transaksi
+        // benar-benar milik siswa tersebut.
+        $success = $transaksiModel->ajukanPengembalianSiswa(
+            $id,
+            $userId
+        );
+
+        if ($success) {
+
+            $this->setFlash(
+                'success',
+                'Permintaan pengembalian buku berhasil diajukan ke petugas perpustakaan.'
+            );
+
+        } else {
+
+            $this->setFlash(
+                'danger',
+                'Gagal mengajukan pengembalian buku. Periksa status transaksi.'
+            );
+        }
+
+        $this->redirect(
+            'index.php?c=user&a=riwayat'
+        );
     }
 
+
+    /**
+     * MENGAKTIFKAN / MENONAKTIFKAN SISWA
+     * Fungsi ini hanya dapat diakses admin.
+     */
     public function toggleStatus() {
+
         $this->requireAdmin();
 
-        $id_pengguna = (int)($_GET['id'] ?? 0);
-        $penggunaModel = new Pengguna();
-        
-        $user = $penggunaModel->getById('id_pengguna', $id_pengguna);
+        $idUser = (int) ($_GET['id'] ?? 0);
 
-        if (!$user) {
-            $this->setFlash('danger', 'Data siswa tidak ditemukan.');
-            $this->redirect('index.php?c=admin&a=siswa');
-            return;
+        if ($idUser <= 0) {
+
+            $this->setFlash(
+                'danger',
+                'ID siswa tidak valid.'
+            );
+
+            $this->redirect(
+                'index.php?c=admin&a=siswa'
+            );
+        }
+
+        // Mengambil siswa dari tabel user.
+        $user = $this->userModel->getById(
+            'id_user',
+            $idUser
+        );
+
+        if (!$user || $user['role'] !== 'pengguna') {
+
+            $this->setFlash(
+                'danger',
+                'Data siswa tidak ditemukan.'
+            );
+
+            $this->redirect(
+                'index.php?c=admin&a=siswa'
+            );
         }
 
         $statusSekarang = $user['status'];
 
         if ($statusSekarang === 'Aktif') {
-            $jumlahTanggungan = $penggunaModel->cekPinjamanAktif($id_pengguna);
+
+            /**
+             * Periksa transaksi yang belum selesai.
+             * Siswa tidak boleh dinonaktifkan jika
+             * masih memiliki pinjaman atau pengajuan.
+             */
+
+            $db = Database::getInstance()->getConnection();
+
+            $sql = "SELECT COUNT(*)
+                    FROM transaksi
+                    WHERE id_user = :id_user
+                    AND status IN (
+                        'menunggu',
+                        'dipinjam',
+                        'menunggu_kembali'
+                    )";
+
+            $stmt = $db->prepare($sql);
+
+            $stmt->execute([
+                ':id_user' => $idUser
+            ]);
+
+            $jumlahTanggungan = (int) $stmt->fetchColumn();
 
             if ($jumlahTanggungan > 0) {
-                $this->setFlash('danger', "Gagal menonaktifkan! Siswa '{$user['nama_lengkap']}' masih memiliki {$jumlahTanggungan} buku yang belum dikembalikan.");
-                $this->redirect('index.php?c=admin&a=siswa');
-                return;
+
+                $this->setFlash(
+                    'danger',
+                    "Gagal menonaktifkan! Siswa '{$user['nama_lengkap']}' masih memiliki {$jumlahTanggungan} transaksi yang belum selesai."
+                );
+
+                $this->redirect(
+                    'index.php?c=admin&a=siswa'
+                );
             }
 
-            $penggunaModel->updateStatus($id_pengguna, 'Non-Aktif');
-            $this->setFlash('success', "Status siswa '{$user['nama_lengkap']}' berhasil diubah menjadi Non-Aktif.");
+            $statusBaru = 'Non-Aktif';
+
         } else {
-            $penggunaModel->updateStatus($id_pengguna, 'Aktif');
-            $this->setFlash('success', "Status siswa '{$user['nama_lengkap']}' berhasil diaktifkan kembali.");
+
+            $statusBaru = 'Aktif';
         }
 
-        $this->redirect('index.php?c=admin&a=siswa');
+        // Memperbarui status pada tabel user.
+        $berhasil = $this->userModel->updateStatus(
+            $idUser,
+            $statusBaru
+        );
+
+        if ($berhasil) {
+
+            $this->setFlash(
+                'success',
+                "Status siswa '{$user['nama_lengkap']}' berhasil diubah menjadi {$statusBaru}."
+            );
+
+        } else {
+
+            $this->setFlash(
+                'danger',
+                'Gagal mengubah status siswa.'
+            );
+        }
+
+        $this->redirect(
+            'index.php?c=admin&a=siswa'
+        );
     }
 }
+
 ?>

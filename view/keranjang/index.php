@@ -107,7 +107,7 @@
                         <p><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> Denda keterlambatan berlaku <strong>Rp 1.000 / hari / buku</strong> jika melewati batas kembali.</p>
                     </div>
 
-                    <?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'user'): ?>
+                    <?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'pengguna'): ?>
                         <a href="index.php?c=keranjang&a=checkout" class="w-full block text-center py-3 rounded-xl bg-[#8FA89B] hover:bg-[#789687] text-white text-xs font-bold transition shadow-xs">
                             Ajukan Peminjaman Sekarang
                         </a>

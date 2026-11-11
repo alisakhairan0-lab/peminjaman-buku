@@ -1,7 +1,7 @@
-<!-- Detail Buku -->
+<!-- Detail Buku - Blue Palette -->
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <div class="mb-6">
-        <a href="index.php?c=katalog&a=index" class="text-xs font-semibold text-gray-500 hover:text-gray-800 transition inline-flex items-center gap-1.5">
+        <a href="index.php?c=katalog&a=index" class="text-xs font-semibold text-gray-500 hover:text-[#2563EB] transition inline-flex items-center gap-1.5">
             <i class="fa-solid fa-arrow-left"></i> Kembali ke Katalog Buku
         </a>
     </div>
@@ -10,12 +10,12 @@
         <div class="grid grid-cols-1 md:grid-cols-12 gap-8 p-6 sm:p-8">
             <!-- Book Visual Thumbnail Card -->
             <div class="md:col-span-4 flex flex-col items-center">
-                <div class="w-full max-w-[220px] aspect-[2/3] bg-gradient-to-tr from-[#EAF0EC] to-[#FAF5E8] rounded-2xl p-4 border border-gray-200 shadow-md flex flex-col justify-between text-center relative">
-                    <span class="text-[10px] font-bold text-[#8FA89B] uppercase tracking-wider block">
+                <div class="w-full max-w-[220px] aspect-[2/3] bg-gradient-to-tr from-[#EFF6FF] to-[#F0F9FF] rounded-2xl p-4 border border-gray-200 shadow-md flex flex-col justify-between text-center relative">
+                    <span class="text-[10px] font-bold text-[#2563EB] uppercase tracking-wider block">
                         <?= htmlspecialchars($buku['nama_kategori'] ?? 'Kategori') ?>
                     </span>
                     <div class="my-auto space-y-2">
-                        <i class="fa-solid fa-book-bookmark text-4xl text-[#8FA89B]"></i>
+                        <i class="fa-solid fa-book-bookmark text-4xl text-[#2563EB]"></i>
                         <h4 class="font-bold text-gray-800 text-sm leading-tight px-1">
                             <?= htmlspecialchars($buku['judul']) ?>
                         </h4>
@@ -25,7 +25,7 @@
 
                 <!-- Stock & Status -->
                 <div class="mt-4 text-center">
-                    <span class="inline-block px-3 py-1 rounded-full text-xs font-bold <?= $buku['stok'] > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800' ?>">
+                    <span class="inline-block px-3 py-1 rounded-full text-xs font-bold <?= $buku['stok'] > 0 ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800' ?>">
                         <?= $buku['stok'] > 0 ? 'Tersedia: ' . $buku['stok'] . ' Eks' : 'Stok Kosong' ?>
                     </span>
                 </div>
@@ -35,10 +35,10 @@
             <div class="md:col-span-8 flex flex-col justify-between space-y-6">
                 <div>
                     <div class="flex items-center gap-2 mb-2">
-                        <span class="px-2.5 py-0.5 rounded-lg bg-[#EAF0EC] text-[#557565] text-xs font-semibold">
+                        <span class="px-2.5 py-0.5 rounded-lg bg-[#EFF6FF] text-[#2563EB] text-xs font-semibold">
                             <?= htmlspecialchars($buku['nama_kategori'] ?? 'Koleksi Umum') ?>
                         </span>
-                        <span class="text-xs text-gray-400">• ID: BUKU-<?= str_pad($buku['id_buku'], 4, '0', STR_PAD_LEFT) ?></span>
+                        <span class="text-xs text-gray-400">ID: BUKU-<?= str_pad($buku['id_buku'], 4, '0', STR_PAD_LEFT) ?></span>
                     </div>
 
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-snug">
@@ -46,7 +46,7 @@
                     </h1>
 
                     <p class="text-sm text-gray-600 mt-2 flex items-center gap-2">
-                        <i class="fa-solid fa-pen-nib text-xs text-[#8FA89B]"></i>
+                        <i class="fa-solid fa-pen-nib text-xs text-[#2563EB]"></i>
                         <span>Penulis: <strong><?= htmlspecialchars($buku['penulis']) ?></strong></span>
                     </p>
                 </div>
@@ -74,7 +74,7 @@
                 <!-- Peminjaman Action Box -->
                 <div class="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center gap-3">
                     <?php if ($buku['stok'] > 0): ?>
-                        <a href="index.php?c=keranjang&a=tambah&id=<?= $buku['id_buku'] ?>" class="w-full sm:w-auto flex-1 text-center py-3 px-6 rounded-xl bg-[#8FA89B] hover:bg-[#789687] text-white font-semibold text-sm transition flex items-center justify-center gap-2 shadow-xs">
+                        <a href="index.php?c=keranjang&a=tambah&id=<?= $buku['id_buku'] ?>" class="w-full sm:w-auto flex-1 text-center py-3 px-6 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold text-sm transition flex items-center justify-center gap-2 shadow-xs">
                             <i class="fa-solid fa-cart-plus"></i> Masukkan ke Keranjang Pinjam
                         </a>
                     <?php else: ?>
